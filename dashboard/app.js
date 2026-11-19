@@ -205,6 +205,11 @@ function fmtAge(days) {
   return Math.round(days) + "d";
 }
 function fmtGas(usd) { return usd < 0.01 ? "under $0.01" : "$" + usd.toFixed(2); }
+function fmtCash(n) {
+  var v = Math.max(0, n);
+  if (v >= 100) return money0(v);
+  return "$" + v.toFixed(2);
+}
 function gasFor(chain) {
   if (Object.prototype.hasOwnProperty.call(GAS_USD, chain)) return { usd: GAS_USD[chain], known: true };
   return { usd: DEFAULT_GAS, known: false };
@@ -212,7 +217,7 @@ function gasFor(chain) {
 function sizeClause(cap, tvl) {
   var bp = (cap / tvl) * 10000;
   var bpText = bp >= 0.1 ? bp.toFixed(2) : bp.toFixed(3);
-  if (cap >= ASSUMPTIONS.position_hi) return money0(cap) + " is the $4,000 cap (" + bpText + " bp of " + fmtUsd(tvl) + " TVL)";
+  if (cap >= ASSUMPTIONS.position_hi) return money0(cap) + " hits the $4,000 cap (" + bpText + " bp of " + fmtUsd(tvl) + " TVL)";
   if (cap <= ASSUMPTIONS.position_lo && tvl * (ASSUMPTIONS.position_bps / 10000) < ASSUMPTIONS.position_lo) {
     return money0(cap) + " is the $150 floor (" + bpText + " bp of " + fmtUsd(tvl) + " TVL)";
   }
@@ -368,7 +373,7 @@ function farmSteps(p, age) {
     stepLine(plan.open, money0(cap) + " already funded in step 1, plus " + gasKnown + " to open", "20 minutes"),
     stepLine(plan.weekly, gasKnown + " each week", "10 minutes a week"),
     stepLine("Unwind " + p.name + " if its TVL falls more than " + band + "% from the snapshot print of " + fmtUsd(p.tvl_usd) + " (" + weekPrint + "). " + plan.risk, "no fee to set the limit", "5 minutes"),
-    stepLine("Hold for " + hold.days + " days because " + hold.why + ". Cash besides the principal is about " + money0(Math.max(1, Math.round(cash))) + ": gas for the fund, the open and " + weeks + " weekly actions, plus " + money0(Math.round(plan.drag)) + " for " + plan.dragWhy + ".", "about " + money0(Math.max(1, Math.round(cash))) + " of fees and gas; the " + money0(cap) + " principal stays in the position and is not a fee", hold.days + " days"),
+    stepLine("Hold for " + hold.days + " days because " + hold.why + ". Cash besides the principal is about " + fmtCash(cash) + ": gas for the fund, the open and " + weeks + " weekly actions, plus " + fmtCash(plan.drag) + " for " + plan.dragWhy + ".", "about " + fmtCash(cash) + " of fees and gas; the " + money0(cap) + " principal stays in the position and is not a fee", hold.days + " days"),
     stepLine("Log the wallet, the open date, each weekly transaction and the unwind date. Withdraw inside " + p.name + " and claim only there. Do not pay anyone else to claim.", gasKnown + " to withdraw, and nothing to claim", "15 minutes at the end")
   ];
 }
@@ -464,7 +469,7 @@ function structuralUsd(c, fit) {
     });
   }
   function th(key, label) {
-    var mark = state.sort === key ? (state.dir < 0 ? " v" : " ^") : "";
+    var mark = state.sort === key ? (state.dir < 0 ? " ↓" : " ↑") : "";
     return el("th", { scope: "col" }, el("button", { type: "button", text: label + mark, onclick: function () {
       if (state.sort === key) state.dir = -state.dir; else { state.sort = key; state.dir = key === "name" ? 1 : -1; }
       render();
@@ -593,7 +598,7 @@ function structuralUsd(c, fit) {
     return el("div", { class: "panel" }, el("div", { class: "scroll" },
       el("table", null,
         el("caption", { text: "Pre-token protocols. Rank is the model's order. Select a row for the comparable and the farm." }),
-        el("thead", null, el("tr", null, th("implied", "Rank"), th("name", "Protocol"), el("th", { text: "Scope" }), th("tvl", "TVL"), th("growth", "7d"), th("age", "Listed"), th("multiple", "FDV/TVL"), th("implied", "Implied FDV"))),
+        el("thead", null, el("tr", null, el("th", { scope: "col", text: "Rank" }), th("name", "Protocol"), el("th", { text: "Scope" }), th("tvl", "TVL"), th("growth", "7d"), th("age", "Listed"), th("multiple", "FDV/TVL"), th("implied", "Implied FDV"))),
         body
       )
     ));
@@ -705,6 +710,7 @@ function structuralUsd(c, fit) {
           ),
           el("div", { class: "fdv" }, el("b", { text: fmtFull(row.implied_value_usd) }), el("span", { text: "implied FDV · " + (row.implied_value_usd / row.tvl_usd).toFixed(3) + "× TVL" }))
         ),
+        el("p", { class: "equation", text: fmtUsd(row.tvl_usd) + " × " + f.multiple.toFixed(3) + " × " + f.size.toFixed(3) + " × " + f.growth.toFixed(3) + " × " + f.tenure.toFixed(3) + " × " + f.breadth.toFixed(3) + " = " + fmtFull(row.implied_value_usd) }),
         el("div", { class: "factors" },
           factor("TVL", fmtUsd(row.tvl_usd), "the base"),
           factor("Category ×", f.multiple.toFixed(3), cat ? cat.n + " comps" : "market prior"),

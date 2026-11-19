@@ -36,7 +36,7 @@ export const ASSUMPTIONS = {
   position_hi: 4000,
 };
 
-export const MODEL_VERSION = 'fathom-1';
+export const MODEL_VERSION = 'fathom-2';
 
 const BANNED_CATEGORY = new Set(['Bridge', 'Canonical Bridge', 'Liquid Staking', 'Liquid Restaking', 'Restaked BTC', 'CEX']);
 const EXCHANGES = ['Binance', 'Coinbase', 'Bybit', 'Kraken', 'Bitget', 'OKX', 'Bitfinex', 'Gemini'];
@@ -344,6 +344,13 @@ function fmtGas(usd: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
+/** Whole dollars from $100 up; cents below that, so a few dollars of gas is not rounded into a slogan. */
+function fmtCash(n: number): string {
+  const v = Math.max(0, n);
+  if (v >= 100) return money0(v);
+  return `$${v.toFixed(2)}`;
+}
+
 function gasFor(chain: string): { usd: number; known: boolean } {
   if (Object.prototype.hasOwnProperty.call(GAS_USD, chain)) return { usd: GAS_USD[chain]!, known: true };
   return { usd: DEFAULT_GAS, known: false };
@@ -352,7 +359,7 @@ function gasFor(chain: string): { usd: number; known: boolean } {
 function sizeClause(cap: number, tvl: number): string {
   const bp = (cap / tvl) * 10_000;
   const bpText = bp >= 0.1 ? bp.toFixed(2) : bp.toFixed(3);
-  if (cap >= ASSUMPTIONS.position_hi) return `${money0(cap)} is the $4,000 cap (${bpText} bp of ${fmtUsd(tvl)} TVL)`;
+  if (cap >= ASSUMPTIONS.position_hi) return `${money0(cap)} hits the $4,000 cap (${bpText} bp of ${fmtUsd(tvl)} TVL)`;
   if (cap <= ASSUMPTIONS.position_lo && tvl * (ASSUMPTIONS.position_bps / 10_000) < ASSUMPTIONS.position_lo) {
     return `${money0(cap)} is the $150 floor (${bpText} bp of ${fmtUsd(tvl)} TVL)`;
   }
@@ -582,8 +589,8 @@ export function farmSteps(p: LaunchInput, age: number | null): string[] {
       '5 minutes',
     ),
     step(
-      `Hold for ${hold.days} days because ${hold.why}. Cash besides the principal is about ${money0(Math.max(1, Math.round(cash)))}: gas for the fund, the open and ${weeks} weekly actions, plus ${money0(Math.round(plan.drag))} for ${plan.dragWhy}.`,
-      `about ${money0(Math.max(1, Math.round(cash)))} of fees and gas; the ${money0(cap)} principal stays in the position and is not a fee`,
+      `Hold for ${hold.days} days because ${hold.why}. Cash besides the principal is about ${fmtCash(cash)}: gas for the fund, the open and ${weeks} weekly actions, plus ${fmtCash(plan.drag)} for ${plan.dragWhy}.`,
+      `about ${fmtCash(cash)} of fees and gas; the ${money0(cap)} principal stays in the position and is not a fee`,
       `${hold.days} days`,
     ),
     step(
